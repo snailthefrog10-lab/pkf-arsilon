@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PKF Arsilon × D4B — Planning Flotte Mobile</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --navy: #1E2761; --navy-dark: #111827; --white: #FFFFFF;
+  --slate-50: #F8FAFC; --slate-100: #F1F5F9; --slate-200: #E2E8F0;
+  --slate-400: #94A3B8; --slate-500: #64748B; --slate-800: #1E293B;
+  --noisy: #2563EB; --noisy-l: #DBEAFE; --noisy-t: #1E3A8A;
+  --bx: #D97706; --bx-l: #FEF3C7; --bx-t: #92400E;
+  --aix: #059669; --aix-l: #D1FAE5; --aix-t: #065F46;
+  --angers: #7C3AED; --angers-l: #EDE9FE; --angers-t: #4C1D95;
+  --lyon: #16A34A; --lyon-l: #DCFCE7; --lyon-t: #14532D;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",Arial,sans-serif;background:var(--slate-100);color:var(--slate-800);font-size:14px;line-height:1.5}
+
+/* HEADER */
+.header{background:linear-gradient(135deg,#1E2761 0%,#162255 100%);color:#fff;padding:2rem 2.5rem 1.5rem}
+.header h1{font-size:1.9rem;font-weight:700;letter-spacing:-.3px;margin-bottom:.2rem}
+.header .subtitle{color:#93C5FD;font-size:1rem;margin-bottom:1.3rem}
+.kpi-row{display:flex;gap:.8rem;flex-wrap:wrap}
+.kpi{background:rgba(255,255,255,.1);border-radius:10px;padding:.65rem 1.1rem;min-width:100px;text-align:center;border:1px solid rgba(255,255,255,.08)}
+.kpi-val{font-size:1.6rem;font-weight:700;color:#60A5FA;line-height:1.1}
+.kpi-lbl{font-size:.68rem;color:#94A3B8;text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+
+/* TABS */
+.tab-bar{background:#fff;border-bottom:2px solid var(--slate-200);padding:0 2rem;display:flex;overflow-x:auto;position:sticky;top:0;z-index:1000;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.tab{padding:.85rem 1.1rem;font-size:.83rem;font-weight:600;color:var(--slate-500);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .15s;user-select:none}
+.tab:hover{color:var(--navy);background:var(--slate-50)}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy)}
+
+/* SECTIONS */
+.section{display:none;padding:1.8rem 2.5rem;max-width:1400px;margin:0 auto}
+.section.active{display:block}
+.section-title{font-size:1.2rem;font-weight:700;color:var(--navy);margin-bottom:1rem;padding-bottom:.4rem;border-bottom:2px solid var(--slate-200)}
+
+/* AGENCY CARD */
+.agency-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.06);margin-bottom:2rem}
+.agency-card-header{padding:.9rem 1.4rem;display:flex;align-items:center;justify-content:space-between;color:#fff;flex-wrap:wrap;gap:.5rem}
+.agency-card-header h2{font-size:1.05rem;font-weight:700}
+.agency-card-header .meta{font-size:.78rem;opacity:.85}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse}
+th{padding:.55rem .75rem;font-size:.76rem;font-weight:600;text-align:center;color:#fff;background:#334155;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:.5rem .75rem;border-bottom:.5px solid var(--slate-200);font-size:.8rem;text-align:center;vertical-align:middle}
+td:first-child{text-align:left;font-weight:500}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even) td{background:var(--slate-50)}
+.j-badge{display:inline-block;padding:2px 7px;border-radius:5px;font-weight:700;font-size:.75rem}
+.tot-row td{font-weight:700;color:#fff!important;border-bottom:none;background:inherit}
+.dist-row td{color:var(--slate-400)!important;font-style:italic;background:#F8FAFC!important}
+.dist-badge{display:inline-block;font-size:.7rem;padding:1px 6px;border-radius:4px;background:var(--slate-200);color:var(--slate-500);font-weight:600;font-style:normal}
+
+/* MAP */
+.map-section{padding:0}
+.map-controls{padding:.75rem 1rem;background:var(--slate-50);border-top:.5px solid var(--slate-200);display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.map-controls-label{font-size:.75rem;font-weight:600;color:var(--slate-500);margin-right:.3rem;white-space:nowrap}
+.day-btn{padding:3px 10px;border-radius:20px;border:1.5px solid var(--slate-200);background:#fff;font-size:.75rem;font-weight:600;cursor:pointer;color:var(--slate-500);transition:all .12s;white-space:nowrap}
+.day-btn:hover{border-color:var(--slate-400);color:var(--slate-800)}
+.day-btn.active{color:#fff;border-color:transparent}
+.map-wrap{height:460px;position:relative}
+.leaflet-map{width:100%;height:100%}
+.map-legend{position:absolute;bottom:12px;right:12px;z-index:999;background:rgba(255,255,255,.96);border-radius:8px;padding:8px 12px;font-size:.72rem;box-shadow:0 2px 10px rgba(0,0,0,.14);min-width:170px}
+.map-legend b{display:block;margin-bottom:5px;font-size:.78rem;color:var(--navy)}
+.leg-item{display:flex;align-items:center;gap:7px;margin:3px 0;color:var(--slate-500)}
+.leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.leg-dash{width:22px;height:3px;border-radius:2px;flex-shrink:0;background:repeating-linear-gradient(90deg,currentColor 0,currentColor 5px,transparent 5px,transparent 9px)}
+
+/* GANTT */
+.gantt-wrap{background:#fff;border-radius:12px;padding:1.2rem 1.5rem;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow-x:auto}
+.gantt-header{display:flex;margin-bottom:3px;margin-left:190px}
+.gantt-wk{flex:1;text-align:center;font-size:.68rem;font-weight:600;color:var(--slate-500);background:var(--slate-100);border-radius:3px;padding:2px 0;margin-right:2px}
+.gantt-row{display:flex;align-items:center;margin-bottom:5px;min-width:600px}
+.gantt-lbl{width:190px;font-size:.78rem;font-weight:600;color:var(--slate-800);flex-shrink:0;padding-right:.5rem}
+.gantt-track{flex:1;background:var(--slate-100);border-radius:5px;height:26px;display:flex;overflow:hidden}
+.gseg{height:26px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:#fff;overflow:hidden}
+.gseg:first-child{border-radius:5px 0 0 5px}
+.gseg:last-child{border-radius:0 5px 5px 0}
+.gseg:only-child{border-radius:5px}
+.ggap{height:26px;background:var(--slate-100)}
+
+/* SUMMARY CARDS */
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:1rem;margin-bottom:1.8rem}
+.summary-card{background:#fff;border-radius:11px;padding:1rem 1.1rem;box-shadow:0 2px 8px rgba(0,0,0,.05);border-left:4px solid var(--accent)}
+.summary-card h3{font-size:.9rem;font-weight:700;color:var(--accent);margin-bottom:.45rem}
+.summary-card .st{display:flex;justify-content:space-between;font-size:.79rem;padding:1px 0;color:var(--slate-500)}
+.summary-card .st b{color:var(--slate-800)}
+
+/* DIST TABLE */
+.dist-section{background:#fff;border-radius:11px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.dist-hdr{background:var(--slate-100);padding:.7rem 1.1rem;font-size:.87rem;font-weight:600;color:var(--slate-500);border-bottom:.5px solid var(--slate-200);display:flex;justify-content:space-between;align-items:center}
+.dist-note{padding:.55rem 1.1rem;font-size:.75rem;color:var(--slate-400);font-style:italic;background:#F8FAFC}
+
+/* CALENDAR TABLE */
+.cal-table-wrap{overflow-x:auto;background:#fff;border-radius:11px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.cal-table th{background:var(--navy);font-size:.75rem}
+.cal-badge{display:inline-block;border-radius:4px;padding:1px 6px;font-size:.72rem;font-weight:700;color:#fff}
+
+footer{background:var(--navy);color:var(--slate-500);text-align:center;padding:1.1rem;font-size:.75rem;margin-top:2rem}
+footer b{color:#93C5FD}
+
+@media(max-width:700px){
+  .header,.section{padding:1rem}
+  .tab-bar{padding:0 .5rem}
+  .gantt-lbl{width:110px;font-size:.7rem}
+  .gantt-header{margin-left:110px}
+  .map-wrap{height:320px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>PKF Arsilon × D4B</h1>
+  <div class="subtitle">Renouvellement de flotte mobile — Planning opérationnel</div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val">653</div><div class="kpi-lbl">Total mobiles</div></div>
+    <div class="kpi"><div class="kpi-val">605</div><div class="kpi-lbl">Terrain</div></div>
+    <div class="kpi"><div class="kpi-val">48</div><div class="kpi-lbl">Distanciel</div></div>
+    <div class="kpi"><div class="kpi-val">48</div><div class="kpi-lbl">Jours terrain</div></div>
+    <div class="kpi"><div class="kpi-val">15/09</div><div class="kpi-lbl">Début</div></div>
+    <div class="kpi"><div class="kpi-val">20/11</div><div class="kpi-lbl">Fin 2025</div></div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab('recap',this)">Vue d'ensemble</div>
+  <div class="tab" onclick="showTab('noisy',this)">🔵 Noisy-le-Grand</div>
+  <div class="tab" onclick="showTab('bordeaux',this)">🟠 Bordeaux</div>
+  <div class="tab" onclick="showTab('aix',this)">🔴 Aix-en-Provence</div>
+  <div class="tab" onclick="showTab('angers',this)">🟣 Angers</div>
+  <div class="tab" onclick="showTab('lyon',this)">🟢 Lyon</div>
+</div>
+
+<!-- ══════════ VUE D'ENSEMBLE ══════════ -->
+<div id="recap" class="section active">
+  <div class="section-title">Vue d'ensemble — Toutes agences</div>
+  <div class="summary-grid">
+    <div class="summary-card" style="--accent:var(--noisy)"><h3>🔵 D4B Noisy-le-Grand</h3><div class="st"><span>Sites terrain</span><b>4</b></div><div class="st"><span>Mobiles</span><b>260</b></div><div class="st"><span>Jours</span><b>14</b></div><div class="st"><span>Période</span><b>15/09 → 04/11</b></div></div>
+    <div class="summary-card" style="--accent:var(--bx)"><h3>🟠 D4B Bordeaux</h3><div class="st"><span>Sites terrain</span><b>4</b></div><div class="st"><span>Mobiles</span><b>143</b></div><div class="st"><span>Jours</span><b>12</b></div><div class="st"><span>Période</span><b>23/09 → 19/11</b></div></div>
+    <div class="summary-card" style="--accent:var(--aix)"><h3>🔴 D4B Aix-en-Provence</h3><div class="st"><span>Sites terrain</span><b>4</b></div><div class="st"><span>Mobiles</span><b>130</b></div><div class="st"><span>Jours</span><b>12</b></div><div class="st"><span>Période</span><b>30/09 → 17/11</b></div></div>
+    <div class="summary-card" style="--accent:var(--angers)"><h3>🟣 D4B Angers</h3><div class="st"><span>Sites terrain</span><b>3</b></div><div class="st"><span>Mobiles</span><b>73</b></div><div class="st"><span>Jours</span><b>7</b></div><div class="st"><span>Période</span><b>23/10 → 10/11</b></div></div>
+    <div class="summary-card" style="--accent:var(--lyon)"><h3>🟢 D4B Lyon</h3><div class="st"><span>Sites terrain</span><b>2</b></div><div class="st"><span>Mobiles</span><b>34</b></div><div class="st"><span>Jours</span><b>3</b></div><div class="st"><span>Période</span><b>12/11 → 20/11</b></div></div>
+  </div>
+
+  <div class="section-title">Calendrier global — 1 site par jour (toutes agences)</div>
+  <div class="cal-table-wrap">
+    <table class="cal-table"><thead><tr>
+      <th>Jours n°</th><th>Agence</th><th>Site PKF</th><th>Mobiles</th><th>Nb jours</th><th>Date début</th><th>Date fin</th>
+    </tr></thead><tbody>
+<tr><td><span class="j-badge" style="background:#2563EB">J1→J6</span></td><td><b style="color:#2563EB">Noisy</b></td><td>Paris</td><td>141</td><td>6</td><td>Lun 15/09</td><td>Lun 22/09</td></tr>
+<tr><td><span class="j-badge" style="background:#D97706">J7→J11</span></td><td><b style="color:#D97706">Bordeaux</b></td><td>Cognac</td><td>58</td><td>5</td><td>Mar 23/09</td><td>Lun 29/09</td></tr>
+<tr><td><span class="j-badge" style="background:#059669">J12→J16</span></td><td><b style="color:#059669">Aix</b></td><td>Nice</td><td>57</td><td>5</td><td>Mar 30/09</td><td>Lun 06/10</td></tr>
+<tr><td><span class="j-badge" style="background:#2563EB">J17→J19</span></td><td><b style="color:#2563EB">Noisy</b></td><td>Lille</td><td>38</td><td>3</td><td>Mar 07/10</td><td>Jeu 09/10</td></tr>
+<tr><td><span class="j-badge" style="background:#059669">J20→J22</span></td><td><b style="color:#059669">Aix</b></td><td>Montpellier</td><td>34</td><td>3</td><td>Ven 10/10</td><td>Mar 14/10</td></tr>
+<tr><td><span class="j-badge" style="background:#2563EB">J23→J25</span></td><td><b style="color:#2563EB">Noisy</b></td><td>Saint-Quentin</td><td>31</td><td>3</td><td>Mer 15/10</td><td>Ven 17/10</td></tr>
+<tr><td><span class="j-badge" style="background:#D97706">J26→J28</span></td><td><b style="color:#D97706">Bordeaux</b></td><td>Bordeaux</td><td>40</td><td>3</td><td>Lun 20/10</td><td>Mer 22/10</td></tr>
+<tr><td><span class="j-badge" style="background:#7C3AED">J29→J31</span></td><td><b style="color:#7C3AED">Angers</b></td><td>Quimper</td><td>30</td><td>3</td><td>Jeu 23/10</td><td>Lun 27/10</td></tr>
+<tr><td><span class="j-badge" style="background:#D97706">J32→J33</span></td><td><b style="color:#D97706">Bordeaux</b></td><td>Pau</td><td>27</td><td>2</td><td>Mar 28/10</td><td>Mer 29/10</td></tr>
+<tr><td><span class="j-badge" style="background:#7C3AED">J34→J35</span></td><td><b style="color:#7C3AED">Angers</b></td><td>Rennes</td><td>27</td><td>2</td><td>Jeu 30/10</td><td>Ven 31/10</td></tr>
+<tr><td><span class="j-badge" style="background:#2563EB">J36→J37</span></td><td><b style="color:#2563EB">Noisy</b></td><td>Amiens</td><td>25</td><td>2</td><td>Lun 03/11</td><td>Mar 04/11</td></tr>
+<tr><td><span class="j-badge" style="background:#059669">J38→J39</span></td><td><b style="color:#059669">Aix</b></td><td>Meyreuil</td><td>23</td><td>2</td><td>Mer 05/11</td><td>Jeu 06/11</td></tr>
+<tr><td><span class="j-badge" style="background:#7C3AED">J40→J41</span></td><td><b style="color:#7C3AED">Angers</b></td><td>Nantes</td><td>16</td><td>2</td><td>Ven 07/11</td><td>Lun 10/11</td></tr>
+<tr><td><span class="j-badge" style="background:#16A34A">J42→J43</span></td><td><b style="color:#16A34A">Lyon</b></td><td>Lyon</td><td>20</td><td>2</td><td>Mer 12/11</td><td>Jeu 13/11</td></tr>
+<tr><td><span class="j-badge" style="background:#059669">J44→J45</span></td><td><b style="color:#059669">Aix</b></td><td>Sophia Antipolis</td><td>16</td><td>2</td><td>Ven 14/11</td><td>Lun 17/11</td></tr>
+<tr><td><span class="j-badge" style="background:#D97706">J46→J47</span></td><td><b style="color:#D97706">Bordeaux</b></td><td>Limoges</td><td>18</td><td>2</td><td>Mar 18/11</td><td>Mer 19/11</td></tr>
+<tr><td><span class="j-badge" style="background:#16A34A">J48</span></td><td><b style="color:#16A34A">Lyon</b></td><td>Bourg-en-Bresse</td><td>14</td><td>1</td><td>Jeu 20/11</td><td>Jeu 20/11</td></tr>
+    </tbody></table>
+  </div>
+  <p style="font-size:.73rem;color:var(--slate-400);margin-top:.6rem;font-style:italic">⚠ 1 seul site actif par jour — toutes agences confondues — pour permettre la présence d'un représentant PKF Arsilon. Jours fériés exclus (Toussaint 01/11, Armistice 11/11).</p>
+
+  <div class="section-title" style="margin-top:1.8rem">Gantt séquentiel — 11 semaines</div>
+  <div class="gantt-wrap">
+    <div style="font-size:.72rem;color:var(--slate-400);margin-bottom:.5rem">S1=sem.15/09 · S2=sem.22/09 · ... · S11=sem.17/11</div>
+    <div class="gantt-header"><div class="gantt-wk">S1</div><div class="gantt-wk">S2</div><div class="gantt-wk">S3</div><div class="gantt-wk">S4</div><div class="gantt-wk">S5</div><div class="gantt-wk">S6</div><div class="gantt-wk">S7</div><div class="gantt-wk">S8</div><div class="gantt-wk">S9</div><div class="gantt-wk">S10</div><div class="gantt-wk">S11</div></div>
+<div class="gantt-row"><div class="gantt-lbl">Noisy-le-Grand</div><div class="gantt-track"><div class="gseg" style="flex:6;background:#3B82F6">Paris 6j</div><div class="ggap" style="flex:10"></div><div class="gseg" style="flex:3;background:#3B82F6">Lille 3j</div><div class="ggap" style="flex:3"></div><div class="gseg" style="flex:3;background:#3B82F6">St-Q 3j</div><div class="ggap" style="flex:10"></div><div class="gseg" style="flex:2;background:#3B82F6">Amiens 2j</div><div class="ggap" style="flex:18"></div></div></div>
+<div class="gantt-row"><div class="gantt-lbl">Bordeaux</div><div class="gantt-track"><div class="ggap" style="flex:6"></div><div class="gseg" style="flex:5;background:#F59E0B">Cognac 5j</div><div class="ggap" style="flex:14"></div><div class="gseg" style="flex:3;background:#F59E0B">Bx 3j</div><div class="ggap" style="flex:3"></div><div class="gseg" style="flex:2;background:#F59E0B">Pau 2j</div><div class="ggap" style="flex:12"></div><div class="gseg" style="flex:2;background:#F59E0B">Lim 2j</div><div class="ggap" style="flex:8"></div></div></div>
+<div class="gantt-row"><div class="gantt-lbl">Aix-en-Provence</div><div class="gantt-track"><div class="ggap" style="flex:11"></div><div class="gseg" style="flex:5;background:#10B981">Nice 5j</div><div class="ggap" style="flex:3"></div><div class="gseg" style="flex:3;background:#10B981">Mtp 3j</div><div class="ggap" style="flex:15"></div><div class="gseg" style="flex:2;background:#10B981">Mey 2j</div><div class="ggap" style="flex:4"></div><div class="gseg" style="flex:2;background:#10B981">Sophia 2j</div><div class="ggap" style="flex:10"></div></div></div>
+<div class="gantt-row"><div class="gantt-lbl">Angers</div><div class="gantt-track"><div class="ggap" style="flex:28"></div><div class="gseg" style="flex:3;background:#8B5CF6">Quimper 3j</div><div class="ggap" style="flex:2"></div><div class="gseg" style="flex:2;background:#8B5CF6">Rennes 2j</div><div class="ggap" style="flex:4"></div><div class="gseg" style="flex:2;background:#8B5CF6">Nantes 2j</div><div class="ggap" style="flex:14"></div></div></div>
+<div class="gantt-row"><div class="gantt-lbl">Lyon</div><div class="gantt-track"><div class="ggap" style="flex:41"></div><div class="gseg" style="flex:2;background:#22C55E">Lyon 2j</div><div class="ggap" style="flex:4"></div><div class="gseg" style="flex:1;background:#22C55E"></div><div class="ggap" style="flex:7"></div></div></div>
+  </div>
+
+  <div class="section-title" style="margin-top:1.8rem">Expéditions distancielles — 48 mobiles · 0 jour terrain</div>
+  <div class="dist-section">
+    <div class="dist-hdr"><span>6 sites — expédition distancielle</span><span style="font-size:.76rem">48 mobiles · aucun technicien déployé</span></div>
+    <table><thead><tr><th style="text-align:left">Site</th><th>Mobiles</th><th>Agence de rattachement</th><th>Mode</th></tr></thead><tbody>
+      <tr class="dist-row"><td>Marseille</td><td>7</td><td>D4B Aix-en-Provence</td><td><span class="dist-badge">Distanciel</span></td></tr>
+      <tr class="dist-row"><td>Cannes</td><td>3</td><td>D4B Aix-en-Provence</td><td><span class="dist-badge">Distanciel</span></td></tr>
+      <tr class="dist-row"><td>Grasse</td><td>1</td><td>D4B Aix-en-Provence</td><td><span class="dist-badge">Distanciel</span></td></tr>
+      <tr class="dist-row"><td>Lyon Sofra</td><td>11</td><td>D4B Lyon</td><td><span class="dist-badge">Distanciel</span></td></tr>
+      <tr class="dist-row"><td>Dijon</td><td>14</td><td>D4B Lyon</td><td><span class="dist-badge">Distanciel</span></td></tr>
+      <tr class="dist-row"><td>Strasbourg</td><td>12</td><td>D4B Lyon</td><td><span class="dist-badge">Distanciel</span></td></tr>
+    </tbody></table>
+    <div class="dist-note">Livraison et activation à distance · aucun déplacement technicien prévu</div>
+  </div>
+</div>
+
+<!-- ══════════ D4B NOISY-LE-GRAND ══════════ -->
+<div id="noisy" class="section">
+  <div class="agency-card">
+    <div class="agency-card-header" style="background:#2563EB">
+      <div><h2>D4B Noisy-le-Grand</h2><div class="meta">4 sites terrain · 260 mobiles · 14 jours · 1 Bd du Rempart, 93160 Noisy-le-Grand</div></div>
+    </div>
+    <table><thead><tr><th>Site PKF</th><th>Mobiles</th><th>Techs</th><th>Mob/j</th><th>Jours</th><th>Jours n°</th><th>Dates</th><th>Trajet</th><th>Nuitée</th><th>Note</th></tr></thead><tbody>
+      <tr><td>Paris</td><td>141</td><td>2</td><td>28</td><td>6</td><td><span class="j-badge" style="background:#DBEAFE;color:#1E3A8A">J1→J6</span></td><td style="white-space:nowrap">15→22/09</td><td>~30 min</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)">2 techs · 28 mob/j</td></tr>
+      <tr><td>Lille</td><td>38</td><td>1</td><td>14</td><td>3</td><td><span class="j-badge" style="background:#DBEAFE;color:#1E3A8A">J17→J19</span></td><td style="white-space:nowrap">07→09/10</td><td>~2h</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr><td>Saint-Quentin</td><td>31</td><td>1</td><td>14</td><td>3</td><td><span class="j-badge" style="background:#DBEAFE;color:#1E3A8A">J23→J25</span></td><td style="white-space:nowrap">15→17/10</td><td>~1h45</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr><td>Amiens</td><td>25</td><td>1</td><td>14</td><td>2</td><td><span class="j-badge" style="background:#DBEAFE;color:#1E3A8A">J36→J37</span></td><td style="white-space:nowrap">03→04/11</td><td>~1h30</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr class="tot-row" style="background:#2563EB"><td>TOTAL TERRAIN</td><td>260</td><td></td><td></td><td>14</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody></table>
+    <div class="map-section">
+      <div class="map-controls">
+        <span class="map-controls-label">Afficher :</span>
+        <button class="day-btn active" style="background:#2563EB;color:#fff;border-color:#2563EB" onclick="filterMap('noisy','all',this)">Tous les sites</button>
+        <button class="day-btn" onclick="filterMap('noisy',0,this)">J1→J6 — Paris</button>
+        <button class="day-btn" onclick="filterMap('noisy',1,this)">J17→J19 — Lille</button>
+        <button class="day-btn" onclick="filterMap('noisy',2,this)">J23→J25 — Saint-Quentin</button>
+        <button class="day-btn" onclick="filterMap('noisy',3,this)">J36→J37 — Amiens</button>
+      </div>
+      <div class="map-wrap"><div id="map-noisy" class="leaflet-map"></div>
+        <div class="map-legend">
+          <b>Légende</b>
+          <div class="leg-item"><div class="leg-dot" style="background:#2563EB"></div>Agence D4B</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#2563EB;width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700">J#</div>Site PKF (terrain)</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--slate-400)"></div>Site PKF (distanciel)</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#2563EB"></div>Itinéraire aller</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#94A3B8"></div>Retour agence</div>
+          <div class="leg-item"><span style="color:#EF4444;font-weight:700;font-size:.85rem">⚠</span>&nbsp;Nuitée conseillée</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ D4B BORDEAUX ══════════ -->
+<div id="bordeaux" class="section">
+  <div class="agency-card">
+    <div class="agency-card-header" style="background:#D97706">
+      <div><h2>D4B Bordeaux</h2><div class="meta">4 sites terrain · 143 mobiles · 12 jours · 96 Rue du Gén. Margueritte, 33400 Talence</div></div>
+    </div>
+    <table><thead><tr><th>Site PKF</th><th>Mobiles</th><th>Techs</th><th>Mob/j</th><th>Jours</th><th>Jours n°</th><th>Dates</th><th>Trajet</th><th>Nuitée</th><th>Note</th></tr></thead><tbody>
+      <tr><td>Cognac</td><td>58</td><td>1</td><td>14</td><td>5</td><td><span class="j-badge" style="background:#FEF3C7;color:#92400E">J7→J11</span></td><td style="white-space:nowrap">23→29/09</td><td>~1h15</td><td><span style="color:#EF4444;font-weight:700">⚠ Oui</span></td><td style="font-size:.75rem;color:var(--slate-500)">Gros volume</td></tr>
+      <tr><td>Bordeaux</td><td>40</td><td>1</td><td>14</td><td>3</td><td><span class="j-badge" style="background:#FEF3C7;color:#92400E">J26→J28</span></td><td style="white-space:nowrap">20→22/10</td><td>~30 min</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr><td>Pau</td><td>27</td><td>1</td><td>14</td><td>2</td><td><span class="j-badge" style="background:#FEF3C7;color:#92400E">J32→J33</span></td><td style="white-space:nowrap">28→29/10</td><td>~2h</td><td><span style="color:#EF4444;font-weight:700">⚠ Oui</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr><td>Limoges</td><td>18</td><td>1</td><td>14</td><td>2</td><td><span class="j-badge" style="background:#FEF3C7;color:#92400E">J46→J47</span></td><td style="white-space:nowrap">18→19/11</td><td>~2h</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr class="tot-row" style="background:#D97706"><td>TOTAL TERRAIN</td><td>143</td><td></td><td></td><td>12</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody></table>
+    <div class="map-section">
+      <div class="map-controls">
+        <span class="map-controls-label">Afficher :</span>
+        <button class="day-btn active" style="background:#D97706;color:#fff;border-color:#D97706" onclick="filterMap('bordeaux','all',this)">Tous les sites</button>
+        <button class="day-btn" onclick="filterMap('bordeaux',0,this)">J7→J11 — Cognac</button>
+        <button class="day-btn" onclick="filterMap('bordeaux',1,this)">J26→J28 — Bordeaux</button>
+        <button class="day-btn" onclick="filterMap('bordeaux',2,this)">J32→J33 — Pau</button>
+        <button class="day-btn" onclick="filterMap('bordeaux',3,this)">J46→J47 — Limoges</button>
+      </div>
+      <div class="map-wrap"><div id="map-bordeaux" class="leaflet-map"></div>
+        <div class="map-legend">
+          <b>Légende</b>
+          <div class="leg-item"><div class="leg-dot" style="background:#D97706"></div>Agence D4B</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#D97706;width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700">J#</div>Site PKF (terrain)</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--slate-400)"></div>Site PKF (distanciel)</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#D97706"></div>Itinéraire aller</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#94A3B8"></div>Retour agence</div>
+          <div class="leg-item"><span style="color:#EF4444;font-weight:700;font-size:.85rem">⚠</span>&nbsp;Nuitée conseillée</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ D4B AIX-EN-PROVENCE ══════════ -->
+<div id="aix" class="section">
+  <div class="agency-card">
+    <div class="agency-card-header" style="background:#059669">
+      <div><h2>D4B Aix-en-Provence</h2><div class="meta">4 sites terrain · 130 mobiles · 12 jours · 140 Av. du 12 Juillet 1998, 13290 Aix-en-Provence</div></div>
+    </div>
+    <table><thead><tr><th>Site PKF</th><th>Mode</th><th>Mobiles</th><th>Techs</th><th>Mob/j</th><th>Jours</th><th>Jours n°</th><th>Dates</th><th>Trajet</th><th>Nuitée</th><th>Note</th></tr></thead><tbody>
+      <tr><td>Nice</td><td>Terrain</td><td>57</td><td>1</td><td>14</td><td>5</td><td><span class="j-badge" style="background:#D1FAE5;color:#065F46">J12→J16</span></td><td style="white-space:nowrap">30/09→06/10</td><td>~2h</td><td><span style="color:#EF4444;font-weight:700">⚠ Oui</span></td><td style="font-size:.75rem;color:var(--slate-500)">Gros volume</td></tr>
+      <tr><td>Montpellier</td><td>Terrain</td><td>34</td><td>1</td><td>14</td><td>3</td><td><span class="j-badge" style="background:#D1FAE5;color:#065F46">J20→J22</span></td><td style="white-space:nowrap">10→14/10</td><td>~1h30</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr><td>Meyreuil</td><td>Terrain</td><td>23</td><td>1</td><td>14</td><td>2</td><td><span class="j-badge" style="background:#D1FAE5;color:#065F46">J38→J39</span></td><td style="white-space:nowrap">05→06/11</td><td>~10 min</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)">Sur place</td></tr>
+      <tr><td>Sophia Antipolis</td><td>Terrain</td><td>16</td><td>1</td><td>14</td><td>2</td><td><span class="j-badge" style="background:#D1FAE5;color:#065F46">J44→J45</span></td><td style="white-space:nowrap">14→17/11</td><td>~30 min</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr class="dist-row"><td>Marseille</td><td><span class="dist-badge">Distanciel</span></td><td>7</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Expédition</td></tr>
+      <tr class="dist-row"><td>Cannes</td><td><span class="dist-badge">Distanciel</span></td><td>3</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Expédition</td></tr>
+      <tr class="dist-row"><td>Grasse</td><td><span class="dist-badge">Distanciel</span></td><td>1</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Expédition</td></tr>
+      <tr class="tot-row" style="background:#059669"><td>TOTAL TERRAIN</td><td></td><td>130</td><td></td><td></td><td>12</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody></table>
+    <div class="map-section">
+      <div class="map-controls">
+        <span class="map-controls-label">Afficher :</span>
+        <button class="day-btn active" style="background:#059669;color:#fff;border-color:#059669" onclick="filterMap('aix','all',this)">Tous les sites</button>
+        <button class="day-btn" onclick="filterMap('aix',0,this)">J12→J16 — Nice</button>
+        <button class="day-btn" onclick="filterMap('aix',1,this)">J20→J22 — Montpellier</button>
+        <button class="day-btn" onclick="filterMap('aix',2,this)">J38→J39 — Meyreuil</button>
+        <button class="day-btn" onclick="filterMap('aix',3,this)">J44→J45 — Sophia Antipolis</button>
+      </div>
+      <div class="map-wrap"><div id="map-aix" class="leaflet-map"></div>
+        <div class="map-legend">
+          <b>Légende</b>
+          <div class="leg-item"><div class="leg-dot" style="background:#059669"></div>Agence D4B</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#059669;width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700">J#</div>Site PKF (terrain)</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--slate-400)"></div>Site PKF (distanciel)</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#059669"></div>Itinéraire aller</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#94A3B8"></div>Retour agence</div>
+          <div class="leg-item"><span style="color:#EF4444;font-weight:700;font-size:.85rem">⚠</span>&nbsp;Nuitée conseillée</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ D4B ANGERS ══════════ -->
+<div id="angers" class="section">
+  <div class="agency-card">
+    <div class="agency-card-header" style="background:#7C3AED">
+      <div><h2>D4B Angers</h2><div class="meta">3 sites terrain · 73 mobiles · 7 jours · 4 Rue du Champ de Montigny, 49080 Bouchemaine</div></div>
+    </div>
+    <table><thead><tr><th>Site PKF</th><th>Mobiles</th><th>Techs</th><th>Mob/j</th><th>Jours</th><th>Jours n°</th><th>Dates</th><th>Trajet</th><th>Nuitée</th><th>Note</th></tr></thead><tbody>
+      <tr><td>Quimper</td><td>30</td><td>1</td><td>14</td><td>3</td><td><span class="j-badge" style="background:#EDE9FE;color:#4C1D95">J29→J31</span></td><td style="white-space:nowrap">23→27/10</td><td>~2h</td><td><span style="color:#EF4444;font-weight:700">⚠ Oui</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr><td>Rennes</td><td>27</td><td>1</td><td>14</td><td>2</td><td><span class="j-badge" style="background:#EDE9FE;color:#4C1D95">J34→J35</span></td><td style="white-space:nowrap">30→31/10</td><td>~1h30</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr><td>Nantes</td><td>16</td><td>1</td><td>14</td><td>2</td><td><span class="j-badge" style="background:#EDE9FE;color:#4C1D95">J40→J41</span></td><td style="white-space:nowrap">07→10/11</td><td>~20 min</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr class="tot-row" style="background:#7C3AED"><td>TOTAL TERRAIN</td><td>73</td><td></td><td></td><td>7</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody></table>
+    <div class="map-section">
+      <div class="map-controls">
+        <span class="map-controls-label">Afficher :</span>
+        <button class="day-btn active" style="background:#7C3AED;color:#fff;border-color:#7C3AED" onclick="filterMap('angers','all',this)">Tous les sites</button>
+        <button class="day-btn" onclick="filterMap('angers',0,this)">J29→J31 — Quimper</button>
+        <button class="day-btn" onclick="filterMap('angers',1,this)">J34→J35 — Rennes</button>
+        <button class="day-btn" onclick="filterMap('angers',2,this)">J40→J41 — Nantes</button>
+      </div>
+      <div class="map-wrap"><div id="map-angers" class="leaflet-map"></div>
+        <div class="map-legend">
+          <b>Légende</b>
+          <div class="leg-item"><div class="leg-dot" style="background:#7C3AED"></div>Agence D4B</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#7C3AED;width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700">J#</div>Site PKF (terrain)</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--slate-400)"></div>Site PKF (distanciel)</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#7C3AED"></div>Itinéraire aller</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#94A3B8"></div>Retour agence</div>
+          <div class="leg-item"><span style="color:#EF4444;font-weight:700;font-size:.85rem">⚠</span>&nbsp;Nuitée conseillée</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ D4B LYON ══════════ -->
+<div id="lyon" class="section">
+  <div class="agency-card">
+    <div class="agency-card-header" style="background:#16A34A">
+      <div><h2>D4B Lyon</h2><div class="meta">2 sites terrain · 34 mobiles · 3 jours · 5 Rue Joseph Savoyat, 38110 La Tour-du-Pin</div></div>
+    </div>
+    <table><thead><tr><th>Site PKF</th><th>Mode</th><th>Mobiles</th><th>Techs</th><th>Mob/j</th><th>Jours</th><th>Jours n°</th><th>Dates</th><th>Trajet</th><th>Nuitée</th><th>Note</th></tr></thead><tbody>
+      <tr><td>Lyon</td><td>Terrain</td><td>20</td><td>1</td><td>14</td><td>2</td><td><span class="j-badge" style="background:#DCFCE7;color:#14532D">J42→J43</span></td><td style="white-space:nowrap">12→13/11</td><td>~45 min</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr><td>Bourg-en-Bresse</td><td>Terrain</td><td>14</td><td>1</td><td>14</td><td>1</td><td><span class="j-badge" style="background:#DCFCE7;color:#14532D">J48</span></td><td style="white-space:nowrap">20/11</td><td>~1h</td><td><span style="color:#10B981">Non</span></td><td style="font-size:.75rem;color:var(--slate-500)"></td></tr>
+      <tr class="dist-row"><td>Lyon Sofra</td><td><span class="dist-badge">Distanciel</span></td><td>11</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Expédition</td></tr>
+      <tr class="dist-row"><td>Dijon</td><td><span class="dist-badge">Distanciel</span></td><td>14</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Expédition</td></tr>
+      <tr class="dist-row"><td>Strasbourg</td><td><span class="dist-badge">Distanciel</span></td><td>12</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Expédition</td></tr>
+      <tr class="tot-row" style="background:#16A34A"><td>TOTAL TERRAIN</td><td></td><td>34</td><td></td><td></td><td>3</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody></table>
+    <div class="map-section">
+      <div class="map-controls">
+        <span class="map-controls-label">Afficher :</span>
+        <button class="day-btn active" style="background:#16A34A;color:#fff;border-color:#16A34A" onclick="filterMap('lyon','all',this)">Tous les sites</button>
+        <button class="day-btn" onclick="filterMap('lyon',0,this)">J42→J43 — Lyon</button>
+        <button class="day-btn" onclick="filterMap('lyon',1,this)">J48 — Bourg-en-Bresse</button>
+      </div>
+      <div class="map-wrap"><div id="map-lyon" class="leaflet-map"></div>
+        <div class="map-legend">
+          <b>Légende</b>
+          <div class="leg-item"><div class="leg-dot" style="background:#16A34A"></div>Agence D4B</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#16A34A;width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700">J#</div>Site PKF (terrain)</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--slate-400)"></div>Site PKF (distanciel)</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#16A34A"></div>Itinéraire aller</div>
+          <div class="leg-item"><div class="leg-dash" style="color:#94A3B8"></div>Retour agence</div>
+          <div class="leg-item"><span style="color:#EF4444;font-weight:700;font-size:.85rem">⚠</span>&nbsp;Nuitée conseillée</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <b>PKF Arsilon × D4B</b> — Planning Renouvellement Flotte Mobile — 653 mobiles · 17 sites terrain · 6 sites distanciel · 48 jours ouvrés · 15/09/2025 → 20/11/2025<br>
+  <span style="font-size:.68rem">Cartes : Leaflet.js + OpenStreetMap — connexion internet requise · 1 site actif/jour toutes agences · jours fériés exclus</span>
+</footer>
+
+<script>
+var MAPS = {};
+var LAYERS = {};
+var INITED = {};
+var AG_MARKERS = {}; // agency base markers per agId
+
+function showTab(id, el) {
+  document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  if(el) el.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(function(){
+    var initFn = window['init_' + id];
+    if(initFn) initFn();
+    if(MAPS[id]) MAPS[id].invalidateSize();
+  }, 80);
+}
+
+function makePinIcon(color, label) {
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="45" viewBox="0 0 36 45">'
+    + '<path d="M18 1C8.6 1 1 8.6 1 18c0 13 17 26 17 26s17-13 17-26C35 8.6 27.4 1 18 1z" fill="'+color+'" stroke="rgba(255,255,255,0.85)" stroke-width="1.5"/>'
+    + '<text x="18" y="22" text-anchor="middle" font-size="10" font-weight="bold" fill="white" font-family="Arial,sans-serif">'+label+'</text>'
+    + '</svg>';
+  return L.divIcon({html:svg, className:'', iconSize:[36,45], iconAnchor:[18,45], popupAnchor:[0,-45]});
+}
+
+function makeAgencyIconLarge(color) {
+  // Large version: shown when viewing all sites
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="11" cy="11" r="10" fill="'+color+'" stroke="#fff" stroke-width="2.5"/><text x="11" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="white" font-family="Arial">D4B</text></svg>';
+  return L.divIcon({html:svg, className:'', iconSize:[22,22], iconAnchor:[11,11], popupAnchor:[0,-14]});
+}
+
+function makeAgencyIconSmall(color) {
+  // Small dimmed version: shown when a specific site is filtered
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"><circle cx="7" cy="7" r="6" fill="'+color+'" stroke="#fff" stroke-width="1.5" opacity="0.5"/></svg>';
+  return L.divIcon({html:svg, className:'', iconSize:[14,14], iconAnchor:[7,7], popupAnchor:[0,-10]});
+}
+
+function makeDistIcon() {
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="35" viewBox="0 0 36 45"><path d="M18 1C8.6 1 1 8.6 1 18c0 13 17 26 17 26s17-13 17-26C35 8.6 27.4 1 18 1z" fill="#94A3B8" stroke="rgba(255,255,255,0.7)" stroke-width="1.5"/><text x="18" y="23" text-anchor="middle" font-size="11" fill="white" font-family="Arial">📦</text></svg>';
+  return L.divIcon({html:svg, className:'', iconSize:[28,35], iconAnchor:[14,35], popupAnchor:[0,-35]});
+}
+
+// ── Core filter function: add/remove layers directly ──────────────────────
+function filterMap(agId, dayIdx, btn) {
+  // Update button styles
+  var agColor = document.querySelector('#'+agId+' .agency-card-header').style.background;
+  document.querySelectorAll('#'+agId+' .day-btn').forEach(function(b){
+    b.classList.remove('active');
+    b.style.background = '';
+    b.style.color = '';
+    b.style.borderColor = '';
+  });
+  btn.classList.add('active');
+  btn.style.background = agColor;
+  btn.style.color = '#fff';
+  btn.style.borderColor = agColor;
+
+  var layers = LAYERS[agId];
+  if(!layers || !layers.length) return;
+  var m = MAPS[agId];
+  var agMarker = AG_MARKERS[agId];
+
+  if(dayIdx === 'all') {
+    // Show everything
+    layers.forEach(function(l) {
+      l.siteMarker.addTo(m);
+      l.routeOut.addTo(m);
+      l.routeBack.addTo(m);
+    });
+    // Agency marker: large
+    if(agMarker) agMarker.setIcon(makeAgencyIconLarge(agMarker._color));
+
+    var allBounds = layers.map(function(l){ return [l.lat, l.lng]; });
+    allBounds.push([layers[0].agLat, layers[0].agLng]);
+    m.fitBounds(allBounds, {padding:[50,50]});
+
+  } else {
+    // Show only the selected site, hide all others
+    layers.forEach(function(l, i) {
+      if(i === dayIdx) {
+        l.siteMarker.addTo(m);
+        l.routeOut.addTo(m);
+        l.routeBack.addTo(m);
+      } else {
+        l.siteMarker.remove();
+        l.routeOut.remove();
+        l.routeBack.remove();
+      }
+    });
+    // Agency marker: small & dimmed
+    if(agMarker) agMarker.setIcon(makeAgencyIconSmall(agMarker._color));
+
+    var sel = layers[dayIdx];
+    m.fitBounds([[sel.agLat, sel.agLng],[sel.lat, sel.lng]], {padding:[70,70]});
+  }
+}
+
+// ── Build map for one agency ───────────────────────────────────────────────
+function buildAgMap(agId, center, zoom, color, agLat, agLng, agName, sites, distSites) {
+  if(INITED[agId]) return;
+  INITED[agId] = true;
+
+  var m = L.map('map-'+agId, {zoomControl:true}).setView(center, zoom);
+  MAPS[agId] = m;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>', maxZoom:18
+  }).addTo(m);
+
+  // Agency marker (large by default — "all sites" view)
+  var agMarker = L.marker([agLat,agLng], {icon:makeAgencyIconLarge(color), zIndexOffset:2000})
+    .bindPopup('<b>'+agName+'</b><br><small style="color:#64748B">Base de départ D4B</small>')
+    .addTo(m);
+  agMarker._color = color; // store for icon swapping
+  AG_MARKERS[agId] = agMarker;
+
+  // Distanciel markers (always visible, not affected by filter)
+  if(distSites && distSites.length) {
+    distSites.forEach(function(d){
+      L.marker([d.lat,d.lng], {icon:makeDistIcon()})
+        .bindPopup('<b>'+d.name+'</b><br><span style="background:#E2E8F0;color:#64748B;padding:1px 6px;border-radius:4px;font-size:11px">📦 Distanciel</span><br><small>'+d.mob+' mobiles</small>')
+        .addTo(m);
+    });
+  }
+
+  // Per-site layers: marker + route out + route back
+  LAYERS[agId] = [];
+  sites.forEach(function(s) {
+    var nuiteeHtml = s.nuitee
+      ? '<br><span style="color:#EF4444;font-weight:700">⚠ Nuitée sur place conseillée</span>'
+      : '<br><span style="color:#10B981">↩ Retour agence le soir</span>';
+
+    var marker = L.marker([s.lat, s.lng], {icon:makePinIcon(color, s.jstart)})
+      .bindPopup(
+        '<b>'+s.name+'</b><br>'
+        +'<span style="background:'+color+';color:#fff;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:700">'+s.jnum+'</span> — '+s.dates+'<br>'
+        +'<small>'+s.mob+' mobiles · '+s.jours+'j · '+s.trajet+'</small>'
+        + nuiteeHtml
+        + (s.note ? '<br><small style="color:#64748B">'+s.note+'</small>' : '')
+      );
+    marker.addTo(m);
+
+    var routeOut = L.polyline([[agLat,agLng],[s.lat,s.lng]], {
+      color:color, weight:2.5, opacity:0.75, dashArray:'8,5'
+    });
+    routeOut.addTo(m);
+
+    var backColor = s.nuitee ? '#EF4444' : '#94A3B8';
+    var routeBack = L.polyline([[s.lat,s.lng],[agLat,agLng]], {
+      color:backColor, weight:1.5, opacity:0.45, dashArray:'3,7'
+    });
+    routeBack.addTo(m);
+
+    LAYERS[agId].push({
+      lat:s.lat, lng:s.lng, agLat:agLat, agLng:agLng,
+      siteMarker:marker, routeOut:routeOut, routeBack:routeBack,
+      jnum:s.jnum, name:s.name, nuitee:s.nuitee
+    });
+  });
+
+  // Initial fit: all sites visible
+  var bounds = sites.map(function(s){ return [s.lat,s.lng]; });
+  bounds.push([agLat, agLng]);
+  m.fitBounds(bounds, {padding:[45,45]});
+  setTimeout(function(){ m.invalidateSize(); }, 120);
+}
+
+window['init_noisy'] = function() {
+  buildAgMap('noisy', [49.6191,2.7162], 7, '#2563EB',
+    48.8377, 2.5441, 'D4B Noisy-le-Grand',
+    [{name:"Paris",mob:141,jours:6,jnum:"J1→J6",jstart:"J1",dates:"15→22/09",trajet:"~30 min",note:"2 techs · 28 mob/j",nuitee:false,lat:48.8847,lng:2.2941},{name:"Lille",mob:38,jours:3,jnum:"J17→J19",jstart:"J17",dates:"07→09/10",trajet:"~2h",note:"",nuitee:false,lat:50.6413,lng:3.1466},{name:"Saint-Quentin",mob:31,jours:3,jnum:"J23→J25",jstart:"J23",dates:"15→17/10",trajet:"~1h45",note:"",nuitee:false,lat:49.8401,lng:3.2887},{name:"Amiens",mob:25,jours:2,jnum:"J36→J37",jstart:"J36",dates:"03→04/11",trajet:"~1h30",note:"",nuitee:false,lat:49.8918,lng:2.3077}],
+    []
+  );
+};
+
+window['init_bordeaux'] = function() {
+  buildAgMap('bordeaux', [44.9030,-0.1106], 7, '#D97706',
+    44.7991, -0.5882, 'D4B Bordeaux',
+    [{name:"Cognac",mob:58,jours:5,jnum:"J7→J11",jstart:"J7",dates:"23→29/09",trajet:"~1h15",note:"Gros volume",nuitee:true,lat:45.6903,lng:-0.3213},{name:"Bordeaux",mob:40,jours:3,jnum:"J26→J28",jstart:"J26",dates:"20→22/10",trajet:"~30 min",note:"",nuitee:false,lat:44.8754,lng:-0.6204},{name:"Pau",mob:27,jours:2,jnum:"J32→J33",jstart:"J32",dates:"28→29/10",trajet:"~2h",note:"",nuitee:true,lat:43.3211,lng:-0.3042},{name:"Limoges",mob:18,jours:2,jnum:"J46→J47",jstart:"J46",dates:"18→19/11",trajet:"~2h",note:"",nuitee:false,lat:45.8293,lng:1.2812}],
+    []
+  );
+};
+
+window['init_aix'] = function() {
+  buildAgMap('aix', [43.5744,5.8232], 7, '#059669',
+    43.4792, 5.3954, 'D4B Aix-en-Provence',
+    [{name:"Nice",mob:57,jours:5,jnum:"J12→J16",jstart:"J12",dates:"30/09→06/10",trajet:"~2h",note:"Gros volume",nuitee:true,lat:43.6806,lng:7.2038},{name:"Montpellier",mob:34,jours:3,jnum:"J20→J22",jstart:"J20",dates:"10→14/10",trajet:"~1h30",note:"",nuitee:false,lat:43.592,lng:3.9422},{name:"Meyreuil",mob:23,jours:2,jnum:"J38→J39",jstart:"J38",dates:"05→06/11",trajet:"~10 min",note:"Sur place",nuitee:false,lat:43.4919,lng:5.5258},{name:"Sophia Antipolis",mob:16,jours:2,jnum:"J44→J45",jstart:"J44",dates:"14→17/11",trajet:"~30 min",note:"",nuitee:false,lat:43.6281,lng:7.049}],
+    [{name:"Marseille",mob:7,lat:43.2965,lng:5.3698},{name:"Cannes",mob:3,lat:43.5528,lng:7.0174},{name:"Grasse",mob:1,lat:43.6592,lng:6.9215}]
+  );
+};
+
+window['init_angers'] = function() {
+  buildAgMap('angers', [47.6827,-1.9910], 7, '#7C3AED',
+    47.4369, -0.6138, 'D4B Angers',
+    [{name:"Quimper",mob:30,jours:3,jnum:"J29→J31",jstart:"J29",dates:"23→27/10",trajet:"~2h",note:"",nuitee:true,lat:47.9779,lng:-4.1018},{name:"Rennes",mob:27,jours:2,jnum:"J34→J35",jstart:"J34",dates:"30→31/10",trajet:"~1h30",note:"",nuitee:false,lat:48.1031,lng:-1.6773},{name:"Nantes",mob:16,jours:2,jnum:"J40→J41",jstart:"J40",dates:"07→10/11",trajet:"~20 min",note:"",nuitee:false,lat:47.213,lng:-1.5713}],
+    []
+  );
+};
+
+window['init_lyon'] = function() {
+  buildAgMap('lyon', [45.8505,5.1816], 7, '#16A34A',
+    45.5631, 5.4454, 'D4B Lyon',
+    [{name:"Lyon",mob:20,jours:2,jnum:"J42→J43",jstart:"J42",dates:"12→13/11",trajet:"~45 min",note:"",nuitee:false,lat:45.7688,lng:4.8521},{name:"Bourg-en-Bresse",mob:14,jours:1,jnum:"J48",jstart:"J48",dates:"20/11",trajet:"~1h",note:"",nuitee:false,lat:46.2197,lng:5.2474}],
+    [{name:"Lyon Sofra",mob:11,lat:45.764,lng:4.8357},{name:"Dijon",mob:14,lat:47.322,lng:5.0415},{name:"Strasbourg",mob:12,lat:48.5734,lng:7.7521}]
+  );
+};
+
+</script>
+</body>
+</html>
